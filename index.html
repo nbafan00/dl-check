@@ -21,6 +21,7 @@
 
 <script src="https://st.max.ru/js/max-web-app.js"></script>
 <script>
+(() => {
 const PROBE_URL = new URL('probe.txt', location.href).href;
 const RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
 
@@ -91,6 +92,7 @@ b4.onclick=()=>{ log("=> K3 redirect"); setTimeout(function(){ location.href='ht
 box.appendChild(b4);
 
 document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b> — скопируй лог (внизу) после шагов 1-3, потом делай шаг 4";
+})();
 </script>
 </body>
 </html>
