@@ -1,32 +1,33 @@
 <!doctype html>
 <html lang="ru">
-<head><meta charset="utf-8"><title>Test</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
- body{font:16px/1.5 ui-monospace,Menlo,monospace;margin:14px;max-width:760px}
- button{display:block;width:100%;padding:18px;font:inherit;font-size:18px;font-weight:bold;border-radius:10px;cursor:pointer;margin:10px 0}
- #a{background:#dfd;border:3px solid #484}
- #b{background:#ffd;border:3px solid #a80}
- #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:220px;overflow:auto}
-</style></head>
+<head><meta charset="utf-8"><title>Auto</title>
+<style>body{font:15px monospace;margin:12px}#log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;border-radius:4px;max-height:400px;overflow:auto}</style>
+</head>
 <body>
-<button id="a">ШАГ А — нажми первой (записать секрет)</button>
-<button id="b">ШАГ Б — нажми второй (уйдём на чужую страницу — дальше ЖДИ 10 СЕК)</button>
+<div>Тест запустится сам через ~2 сек. Просто скопируй лог внизу через 6 секунд.</div>
 <div id="log">ready</div>
 <script src="https://st.max.ru/js/max-web-app.js"></script>
 <script>(() => {
-const RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
-const logEl = document.getElementById('log');
+const logEl=document.getElementById('log');
 function log(...a){ logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + a.map(x=>String(x)).join(" "); }
-log("run:", RUN, "| platform:", window.WebApp && WebApp.platform, "| version:", window.WebApp && WebApp.version);
-const t = setInterval(()=>{ if(window.WebApp && typeof WebApp.sendEvent==='function' && !WebApp.__w){
-  const o = WebApp.sendEvent.bind(WebApp);
-  WebApp.sendEvent = function(n,d){ try{ log("<=", n, d, "|b64:", btoa(String(d))); }catch(e){ log("<=", n, d); } return o(n,d); };
-  WebApp.__w = 1; clearInterval(t); } }, 200);
-document.getElementById('a').onclick = () => {
-  WebApp.DeviceStorage.setItem('probe-secret-shared','SECRET-SHARED-VALUE')
-    .then(()=>log("ШАГ А: секрет записан")).catch(e=>log("ШАГ А ошибка", JSON.stringify(e)));
-};
-document.getElementById('b').onclick = () => { log("=> переход"); setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@08ed8c499b0cca12e00f10ed68c40758d63f3226/child.xhtml'; }, 300); };
+const RUN=(crypto.randomUUID?crypto.randomUUID().slice(0,8):Math.random().toString(36).slice(2,10));
+log("run:", RUN);
+function raw(name,obj){ try{ window.webkit.messageHandlers.EventHandler.postMessage(name+":"+JSON.stringify(obj)); log("=>", name, JSON.stringify(obj).slice(0,120)); }catch(e){ log("raw throw:", e.message); } }
+setTimeout(()=>{
+  try{
+    const qid = window.WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.query_id;
+    log("query_id:", qid ? String(qid).slice(0,8)+"…" : "ОТСУТСТВУЕТ");
+    WebApp.DeviceStorage.setItem('probe-secret-shared','SECRET-SHARED-VALUE')
+      .then(()=>{
+        log("SDK setItem: ok");
+        raw("WebAppDeviceStorageGetKey",{requestId:"raw-NOqid-"+RUN, key:"probe-secret-shared"});
+        raw("WebAppDeviceStorageGetKey",{requestId:"raw-WITHqid-"+RUN, key:"probe-secret-shared", queryId: qid});
+      }).catch(e=>log("setItem err", JSON.stringify(e)));
+  }catch(e){ log("err", e.message); }
+}, 2000);
+const t=setInterval(()=>{ if(window.WebApp && typeof WebApp.sendEvent==='function' && !WebApp.__w){
+  const o=WebApp.sendEvent.bind(WebApp);
+  WebApp.sendEvent=function(n,d){ log("<=", n, d); return o(n,d); };
+  WebApp.__w=1; clearInterval(t); } },200);
 })();</script>
 </body></html>
