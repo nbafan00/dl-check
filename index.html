@@ -71,7 +71,9 @@ b2.onclick=()=>{
       WebApp.DeviceStorage.getItem("q'-window.__e1sq=1-'").catch(e=>log('e1d',e));
     },500);
   }catch(e){ log('E1 throw', e.message); }
-  setTimeout(()=>log("E1 result: __e1dq=", window.__e1dq, " __e1sq=", window.__e1sq), 4000);
+  raw("WebAppDeviceStorageGetKey",{requestId:'\\");window.__k1bs=1;//', key:'k'+RUN});
+  raw("WebAppDeviceStorageGetKey",{requestId:"\\');window.__k1bs2=1;//", key:'k'+RUN});
+  setTimeout(()=>log("E1 result: __e1dq=", window.__e1dq, " __e1sq=", window.__e1sq, " __k1bs=", window.__k1bs, " __k1bs2=", window.__k1bs2), 4000);
 };
 box.appendChild(b2);
 
