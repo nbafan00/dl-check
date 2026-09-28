@@ -22,7 +22,10 @@ document.getElementById('a').onclick=function(){post("WebAppDownloadFile",{url:"
 document.getElementById('b').onclick=function(){
   post("WebAppSecureStorageSaveKey",{requestId:"frame-save-"+TS,key:"frame-key-"+TS,value:"written-from-cross-origin-frame"});
   setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"frame-get-"+TS,key:"frame-key-"+TS})},400);
+  setTimeout(function(){post("WebAppDeviceStorageGetKey",{requestId:"frame-secret-"+TS,key:"probe-secret-shared"})},800);
 };
+setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto1s-"+TS+".txt"})},1000);
+setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto5s-"+TS+".txt"})},5000);
 ]]></script>
 </body>
 </html>
