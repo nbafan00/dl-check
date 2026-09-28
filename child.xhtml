@@ -1,31 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
-<head><meta charset="utf-8"/><title>Frame</title>
-<style>body{font:12px monospace;margin:8px;background:#fffbe6}button{margin:4px;padding:6px;font:inherit}</style>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
+<head><meta charset="utf-8"/><title>R</title>
+<style>body{font:15px monospace;margin:10px;background:#fffbe6}button{width:100%;padding:14px;font:inherit;font-size:16px;font-weight:bold;background:#dfd;border:2px solid #484;border-radius:8px;cursor:pointer}#s{margin-top:6px;word-break:break-all}</style>
 </head>
 <body>
-<div id="s">frame loaded</div>
-<button id="a">A: скачать файл (диалог)</button>
-<button id="b">B: хранилище мини-аппа</button>
+<button id="b">КНОПКА 1 — нажми меня</button>
+<div id="s">ожидание…</div>
 <script><![CDATA[
 const s=document.getElementById('s');
 const TS=Date.now().toString(36);
+window.WebApp={sendEvent:function(n,d){s.textContent="<= "+n+" "+d;}};
 function post(name,obj){
   const p=name+":"+JSON.stringify(obj);
-  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); s.textContent="sent: "+p; }
-  catch(e){ s.textContent="no bridge: "+e.message; }
+  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); s.textContent="отправлено: "+p; }
+  catch(e){ s.textContent="нет моста: "+e.message; }
 }
-window.WebApp={sendEvent:function(n,d){s.textContent='<='+' '+n+' '+d;}};
-setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-frame-auto-"+TS+".txt"})},1200);
-document.getElementById('a').onclick=function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-frame-click-"+TS+".txt"})};
 document.getElementById('b').onclick=function(){
-  post("WebAppSecureStorageSaveKey",{requestId:"frame-save-"+TS,key:"frame-key-"+TS,value:"written-from-cross-origin-frame"});
-  setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"frame-get-"+TS,key:"frame-key-"+TS})},400);
-  setTimeout(function(){post("WebAppDeviceStorageGetKey",{requestId:"frame-secret-"+TS,key:"probe-secret-shared"})},800);
+  post("WebAppDeviceStorageGetKey",{requestId:"frame-secret-"+TS,key:"probe-secret-shared"});
+  setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"frame-sec-"+TS,key:"probe-secret-sec"})},400);
 };
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto1s-"+TS+".txt"})},1000);
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto5s-"+TS+".txt"})},5000);
 ]]></script>
-</body>
-</html>
+</body></html>
