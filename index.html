@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Download test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{font:13px/1.45 ui-monospace,Menlo,monospace;margin:16px;max-width:760px}
+  button{display:block;width:100%;margin:3px 0;padding:7px;text-align:left;cursor:pointer;
+         font:inherit;background:#f6f6f6;border:1px solid #ccc;border-radius:4px}
+  button:hover{background:#eef4ff}
+  #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:12px;
+       border-radius:4px;max-height:320px;overflow:auto}
+  h3{font-size:15px}
+</style>
+</head>
+<body>
+<h3>Download test</h3>
+<div id="meta"></div>
+<div id="buttons"></div>
+<div id="log">ready</div>
+
+<script src="https://st.max.ru/js/max-web-app.js"></script>
+<script>
+const PROBE_URL = new URL('probe.txt', location.href).href;
+const RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
+
+const logEl = document.getElementById('log');
+function log(...a){ const s = a.map(x => typeof x==='object'?JSON.stringify(x):String(x)).join(' ');
+  logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + s; }
+log("run:", RUN, "| platform:", window.WebApp && WebApp.platform, "| version:", window.WebApp && WebApp.version);
+
+function wrapSendEvent(){
+  if (window.WebApp && typeof WebApp.sendEvent === 'function' && !WebApp.__wrapped){
+    const orig = WebApp.sendEvent.bind(WebApp);
+    WebApp.sendEvent = function(name, data){ log("<=", name, data); return orig(name, data); };
+    WebApp.__wrapped = true; return true;
+  } return false;
+}
+let weTry=0; const weTimer=setInterval(()=>{ if(wrapSendEvent()||++weTry>40) clearInterval(weTimer); },250);
+
+function viaSdk(url,name){ return WebApp.downloadFile(url,name); }
+function viaRaw(url,name){
+  const p = "WebAppDownloadFile:" + JSON.stringify({url:url, file_name:name});
+  log("=> raw", p);
+  window.webkit.messageHandlers.EventHandler.postMessage(p);
+}
+
+const CASES = [
+ {id:"C1", name:"probe-"+RUN+".txt"},
+ {id:"C2", name:"../probe-up-"+RUN+".txt"},
+ {id:"C3", name:"../../../../../../../tmp/probe-tmp-"+RUN+".txt"},
+ {id:"C4", name:"/tmp/probe-abs-"+RUN+".txt"},
+ {id:"C5", name:"~/probe-home-"+RUN+".txt"},
+ {id:"C6", name:"sub/probe-nest-"+RUN+".txt"},
+ {id:"C7", name:"\u202Etxt."+RUN+"\u202Cgnp-3lorp\u202E.."},
+ {id:"C8", name:"probe-nl-"+RUN+".txt\n\nSAVED-TO:-/tmp\n.txt"},
+];
+const box = document.getElementById('buttons');
+CASES.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.id+" sdk";
+  b.onclick=()=>{ log("=> sdk", c.name);
+    try{ const p=viaSdk(PROBE_URL,c.name); if(p&&p.catch)p.catch(e=>log("reject",e)); }
+    catch(e){ log("sdk throw:",e.message,"-> raw"); viaRaw(PROBE_URL,c.name); } };
+  box.appendChild(b);
+  const r=document.createElement('button'); r.textContent=c.id+" raw";
+  r.onclick=()=>{ try{ viaRaw(PROBE_URL,c.name); }catch(e){ log("raw throw:",e.message); } };
+  box.appendChild(r);
+});
+
+setTimeout(()=>{
+  const n="probe-ng-"+RUN+".txt"; log("=> auto (no gesture)", n);
+  try{ const p=viaSdk(PROBE_URL,n); if(p&&p.catch)p.catch(e=>log("auto reject",e)); }
+  catch(e){ log("auto throw:",e.message,"-> raw"); viaRaw(PROBE_URL,n); }
+},1500);
+
+fetch(PROBE_URL).then(r=>r.blob()).then(b=>{
+  const u=URL.createObjectURL(b);
+  const btn=document.createElement('button'); btn.textContent="C10 blob";
+  btn.onclick=()=>{ const n="probe-blob-"+RUN+".txt"; log("=> blob", n);
+    try{ const p=viaSdk(u,n); if(p&&p.catch)p.catch(e=>log("blob reject",e)); }
+    catch(e){ log("blob throw:",e.message); } };
+  box.appendChild(btn);
+}).catch(e=>log("blob fetch fail:",e.message));
+
+document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b>";
+</script>
+</body>
+</html>
