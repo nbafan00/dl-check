@@ -3,16 +3,15 @@
 <head><meta charset="utf-8"><title>Test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
- body{font:15px/1.5 ui-monospace,Menlo,monospace;margin:12px;max-width:760px}
- #b2{width:100%;padding:16px;font:inherit;font-size:17px;font-weight:bold;background:#ffd;border:2px solid #a80;border-radius:8px;cursor:pointer;margin-top:10px}
- iframe{width:100%;height:150px;border:2px dashed #999;background:#fffbe6;margin-top:8px}
- #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:260px;overflow:auto}
- .n{background:#336;color:#fff;padding:2px 8px;border-radius:4px}
+ body{font:16px/1.5 ui-monospace,Menlo,monospace;margin:14px;max-width:760px}
+ button{display:block;width:100%;padding:18px;font:inherit;font-size:18px;font-weight:bold;border-radius:10px;cursor:pointer;margin:10px 0}
+ #a{background:#dfd;border:3px solid #484}
+ #b{background:#ffd;border:3px solid #a80}
+ #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:220px;overflow:auto}
 </style></head>
 <body>
-<div>Порядок: сначала <span class="n">КНОПКА 1</span> в жёлтой рамке ниже, потом <span class="n">КНОПКА 2</span> на этой странице.</div>
-<iframe src="https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml"></iframe>
-<button id="b2">КНОПКА 2 — нажми ПОСЛЕ кнопки 1 (страница сменится — жди 10 сек)</button>
+<button id="a">ШАГ А — нажми первой (записать секрет)</button>
+<button id="b">ШАГ Б — нажми второй (уйдём на чужую страницу — дальше ЖДИ 10 СЕК)</button>
 <div id="log">ready</div>
 <script src="https://st.max.ru/js/max-web-app.js"></script>
 <script>(() => {
@@ -24,6 +23,10 @@ const t = setInterval(()=>{ if(window.WebApp && typeof WebApp.sendEvent==='funct
   const o = WebApp.sendEvent.bind(WebApp);
   WebApp.sendEvent = function(n,d){ try{ log("<=", n, d, "|b64:", btoa(String(d))); }catch(e){ log("<=", n, d); } return o(n,d); };
   WebApp.__w = 1; clearInterval(t); } }, 200);
-document.getElementById('b2').onclick = () => { log("=> redirect"); setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; }, 300); };
+document.getElementById('a').onclick = () => {
+  WebApp.DeviceStorage.setItem('probe-secret-shared','SECRET-SHARED-VALUE')
+    .then(()=>log("ШАГ А: секрет записан")).catch(e=>log("ШАГ А ошибка", JSON.stringify(e)));
+};
+document.getElementById('b').onclick = () => { log("=> переход"); setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.xhtml'; }, 300); };
 })();</script>
 </body></html>
