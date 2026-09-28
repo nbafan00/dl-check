@@ -16,6 +16,7 @@ function post(name,obj){
   try{ window.webkit.messageHandlers.EventHandler.postMessage(p); s.textContent="sent: "+p; }
   catch(e){ s.textContent="no bridge: "+e.message; }
 }
+window.WebApp={sendEvent:function(n,d){s.textContent='<='+' '+n+' '+d;}};
 setTimeout(function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-frame-auto-"+TS+".txt"})},1200);
 document.getElementById('a').onclick=function(){post("WebAppDownloadFile",{url:"https://nbafan00.github.io/dl-check/probe.txt",file_name:"probe-frame-click-"+TS+".txt"})};
 document.getElementById('b').onclick=function(){
