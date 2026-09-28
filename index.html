@@ -83,6 +83,34 @@ fetch(PROBE_URL).then(r=>r.blob()).then(b=>{
   box.appendChild(btn);
 }).catch(e=>log("blob fetch fail:",e.message));
 
+
+// round 2: cross-origin frame (Г3) + escaping echo (Г2)
+(function(){
+  const CDN = location.hostname === 'nbafan00.github.io'
+    ? 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@main/child.html' : 'child.html';
+  const f=document.createElement('iframe'); f.src=CDN; f.style.cssText='width:100%;height:70px;border:1px dashed #999;background:#fffbe6';
+  document.body.appendChild(f); log('iframe:', CDN);
+
+  const b=document.createElement('button'); b.textContent='E1 escape-check (device storage)';
+  b.onclick=()=>{
+    const k1='q"-window.__dq=1-"';
+    const k2="q'-window.__sq=1-'";
+    try{
+      WebApp.DeviceStorage.setItem(k1,'v').then(()=>WebApp.DeviceStorage.getItem(k1)).catch(e=>log('e1a',e));
+      WebApp.DeviceStorage.setItem(k2,'v').then(()=>WebApp.DeviceStorage.getItem(k2)).catch(e=>log('e1b',e));
+    }catch(e){ log('e1 throw', e.message); }
+    setTimeout(()=>log('after escape-check: __dq=',window.__dq,'__sq=',window.__sq),2500);
+  };
+  box.appendChild(b);
+
+  const r=document.createElement('button'); r.textContent='R blob retry (wait 60s)';
+  r.onclick=async()=>{
+    try{ const b2=await (await fetch(PROBE_URL)).blob(); const u=URL.createObjectURL(b2);
+      log('=> blob retry'); const p=WebApp.downloadFile(u,'probe-blob2-'+RUN+'.txt'); if(p&&p.catch)p.catch(e=>log('blob2 reject',e));
+    }catch(e){ log('blob2 fetch fail',e.message); } };
+  box.appendChild(r);
+})();
+
 document.getElementById('meta').innerHTML="run: <b>"+RUN+"</b>";
 </script>
 </body>
