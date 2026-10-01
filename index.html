@@ -33,14 +33,16 @@ let startParam = null;
 try { startParam = window.WebApp && WebApp.initDataUnsafe && WebApp.initDataUnsafe.start_param || null; } catch(e){}
 
 let RUN = crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10);
-const AUTO = (autoParam !== null) || startParam === 'auto';
+const wspParam = qParams.get('WebAppStartParam');
+const AUTO = (autoParam !== null) || (wspParam !== null) || startParam === 'auto';
 if (autoParam && autoParam !== 'auto') RUN = autoParam.slice(0,16);
 document.title = "R:"+RUN+(AUTO?"-auto":"-manual");
 
 // ==== лог + перехват native→JS ответов ====
 const logEl = document.getElementById('log');
+function persistLog(){ try { localStorage.setItem("g1log:"+RUN, logEl.textContent); } catch(e){} }
 function log(...a){ const s = a.map(x => typeof x==='object'?JSON.stringify(x):String(x)).join(' ';
-  logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + s; }
+  logEl.textContent += "\n[" + new Date().toTimeString().slice(0,8) + "] " + s; persistLog(); }
 log("probe run:", RUN, "| auto:", AUTO, "| autoParam:", autoParam, "| start_param:", startParam,
     "| platform:", window.WebApp && WebApp.platform, "| version:", window.WebApp && WebApp.version);
 
