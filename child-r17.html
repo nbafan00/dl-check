@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>R17CHILD</title>
+<style>body{font:14px monospace;margin:8px;background:#eef}#s{word-break:break-all;white-space:pre-wrap}</style>
+</head>
+<body>
+<div id="s">child-r17 boot</div>
+<script>
+"use strict";
+(function(){
+var RUN = (crypto.randomUUID ? crypto.randomUUID().slice(0,8) : String(Math.random()).slice(2,10));
+var s = document.getElementById('s');
+function log(){
+  var line = '[' + new Date().toTimeString().slice(0,8) + '] ' + Array.prototype.map.call(arguments, String).join(' ');
+  s.textContent += '\n' + line;
+  console.log('[R17CHILD:'+RUN+']', Array.prototype.join.call(arguments,' '));
+  document.title = 'R17CHILD ' + RUN;
+}
+log('run', RUN, 'origin', location.origin, 'href', location.href);
+
+var replies = 0;
+window.addEventListener('message', function(e){
+  replies++;
+  log('<= REPLY origin=' + e.origin + ' data=' + String(e.data).slice(0,300));
+});
+
+function postToTop(type, obj){
+  var msg = JSON.stringify(Object.assign({type: type}, obj || {}));
+  var w = window.parent && window.parent.parent ? window.parent.parent : window.parent;
+  try { w.postMessage(msg, '*'); log('=> posted to top:', type, JSON.stringify(obj||{})); }
+  catch(e){ log('!! post fail', type, e.message); }
+}
+
+// Test 1: WebAppShare — мгновенный unsupported-ответ, если событие принято мостом
+setTimeout(function(){ postToTop('WebAppShare', {requestId:'r17-child-share-'+RUN, text:'x', link:'https://example.com/'}); }, 800);
+// Test 2: DeviceStorage get с чужим queryId
+setTimeout(function(){ postToTop('WebAppDeviceStorageGetKey', {requestId:'r17-child-ds-'+RUN, key:'probe-secret-shared', queryId:'00000000-0000-0000-0000-000000000000'}); }, 1600);
+// Test 3: NFC (чувствительный кандидат)
+setTimeout(function(){ postToTop('WebAppNfcGetInfo', {requestId:'r17-child-nfc-'+RUN}); }, 2400);
+// Test 4: SetupBackButton — видимый эффект в UI веб-клиента, если принят
+setTimeout(function(){ postToTop('WebAppSetupBackButton', {isVisible:true}); }, 3200);
+// Test 5: webkit-хендлеры (десктоп-механика) — маркер отсутствия
+setTimeout(function(){
+  try { window.webkit.messageHandlers.EventHandler.postMessage('WebAppShare:{}'); log('webkit: POSTED (unexpected on web)'); }
+  catch(e){ log('webkit: отсутствует —', e.name); }
+}, 4000);
+setTimeout(function(){ log('SUMMARY replies=' + replies + (replies===0 ? ' — МОЛЧАНИЕ: мост не отвечает чужому origin' : ' — ОТВЕТЫ ПОЛУЧЕНЫ')); }, 6000);
+})();
+</script>
+</body></html>
