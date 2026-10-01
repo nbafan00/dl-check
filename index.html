@@ -152,10 +152,23 @@ function makeNested(kind){
       '<\/script>';
     log('N2: создан SAME-ORIGIN фрейм (srcdoc, без sandbox)');
   } else if (kind === 'foreign'){
-    nested.src = 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@c50a44cf6c92bc8eca84b9e1358163b7e4403018/child-r17.html';
-    log('N3: создан ЧУЖОЙ origin фрейм (jsdelivr)');
+    nested.src = 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@f363f1d589c6d4fd7cc54b89094a464f690b1ffb/child-r17.xhtml';
+    log('N3: создан ЧУЖОЙ origin фрейм (jsdelivr, xhtml)');
+  } else if (kind === 'sameurl'){
+    nested.src = 'https://nbafan00.github.io/dl-check/?mode=child&r=' + RUN;
+    log('N2b: создан SAME-ORIGIN фрейм по URL (?mode=child)');
   }
   document.body.appendChild(nested);
+}
+function childMode(){
+  var R = 'so2-' + Math.random().toString(36).slice(2,8);
+  document.title = 'R17CHILD ' + R;
+  function L(m){ console.log('[R17SO:'+R+']', m); document.body.insertAdjacentHTML('beforeend', '<div>' + m + '</div>'); }
+  window.addEventListener('message', function(e){ L('<= REPLY origin=' + e.origin + ' ' + String(e.data).slice(0,220)); });
+  L('same-origin child by URL, origin=' + location.origin + ' parent!==top: ' + (window.parent !== window.top));
+  setTimeout(function(){ var m = JSON.stringify({type:'WebAppShare', requestId:'r17-so-share-'+R}); window.parent.parent.postMessage(m, '*'); L('=> posted WebAppShare to top'); }, 800);
+  setTimeout(function(){ var m = JSON.stringify({type:'WebAppGetViewportSize', requestId:'r17-so-vp-'+R}); window.parent.parent.postMessage(m, '*'); L('=> posted GetViewportSize to top'); }, 1600);
+  setTimeout(function(){ var m = JSON.stringify({type:'WebAppSetupBackButton', requestId:'r17-so-bb-'+R, isVisible:true}); window.parent.parent.postMessage(m, '*'); L('=> posted SetupBackButton to top'); }, 2400);
 }
 
 var tests = {
@@ -169,6 +182,7 @@ var tests = {
   closeconf_off: function(){ rawPost('WebAppSetupClosingBehavior', {needConfirmation:false}); },
   n1: function(){ makeNested('opaque'); },
   n2: function(){ makeNested('same'); },
+  n2b: function(){ makeNested('sameurl'); },
   n3: function(){ makeNested('foreign'); },
   openlink: function(){ rawPost('WebAppOpenLink', {url:'https://example.com/r17-openlink'}); },
   openlink_int: function(){ rawPost('WebAppOpenLink', {url:'https://max.ru/legal'}); },
@@ -195,6 +209,9 @@ window.addEventListener('message', function(e){
   if (j && j.r17cmd && tests[j.r17cmd]){ log('CMD', j.r17cmd); tests[j.r17cmd](); }
 });
 
+if (new URLSearchParams(location.search).get('mode') === 'child'){
+  childMode();
+} else {
 var plat = env();
 if (plat === 'web'){
   log('autorun: платформа web — инвентаризация через 2 с (остальное по командам/кнопкам)');
@@ -203,9 +220,11 @@ if (plat === 'web'){
   setTimeout(function(){ makeNested('opaque'); }, 40000);
   setTimeout(function(){ makeNested('same'); }, 47000);
   setTimeout(function(){ makeNested('foreign'); }, 54000);
-  setTimeout(function(){ log('AUTORUN PHASE DONE'); title('auto-done'); }, 62000);
+  setTimeout(function(){ makeNested('sameurl'); }, 61000);
+  setTimeout(function(){ log('AUTORUN PHASE DONE'); title('auto-done'); }, 69000);
 } else {
   log('платформа НЕ web (' + plat + ') — только ручные кнопки');
+}
 }
 title('loaded');
 })();
