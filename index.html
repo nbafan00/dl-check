@@ -152,7 +152,7 @@ function makeNested(kind){
       '<\/script>';
     log('N2: создан SAME-ORIGIN фрейм (srcdoc, без sandbox)');
   } else if (kind === 'foreign'){
-    nested.src = 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@f363f1d589c6d4fd7cc54b89094a464f690b1ffb/child-r17.xhtml';
+    nested.src = 'https://cdn.jsdelivr.net/gh/nbafan00/dl-check@23133a2db4b73ba7148ba1bbcacf6b62dc07ea42/child-r17.xhtml';
     log('N3: создан ЧУЖОЙ origin фрейм (jsdelivr, xhtml)');
   } else if (kind === 'sameurl'){
     nested.src = 'https://nbafan00.github.io/dl-check/?mode=child&r=' + RUN;
